@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken')
 
 function makeUsersArray() {
   return [
@@ -240,20 +241,6 @@ function seedUsers(db, users) {
     password: bcrypt.hashSync(user.password, 1),
   }));
   return db.into('thingful_users').insert(preppedUsers);
-  // .then(() =>
-  //   // update the auto sequence to stay in sync
-  //   db
-  //     .raw(`SELECT setval('thingful_users_id_seq', ?)`, [
-  //       users[users.length - 1].id,
-  //     ])
-  //     .then(() => {
-  //       return db('thingful_users')
-  //         .select()
-  //         .then((results) => {
-  //           db.raw('');
-  //         });
-  //     })
-  // );
 }
 
 function seedThingsTables(db, users, things, reviews = []) {
@@ -261,11 +248,6 @@ function seedThingsTables(db, users, things, reviews = []) {
     db('thingful_users')
       .then(() => seedUsers(db, users))
       .then(() => db.into('thingful_things').insert(things))
-      // .then(() =>
-      //   db.raw(`SELECT setval('thingful_users_id_seq', ?)`, [
-      //     users[users.length - 1].id,
-      //   ])
-      // )
       .then(() => reviews.length && db.into('thingful_reviews').insert(reviews))
   );
 }
@@ -276,11 +258,13 @@ function seedMaliciousThing(db, user, thing) {
   );
 }
 
-function makeAuthHeader(user) {
-  const token = Buffer.from(`${user.user_name}:${user.password}`).toString(
-    'base64'
-  );
-  return `Basic ${token}`;
+function makeAuthHeader(user, secret = process.env.JWT_SECRET) {
+  const token = jwt.sign({ user_id: user.id }, secret, {
+    subject: user.user_name,
+    algorithm: 'HS256',
+  })
+  console.log(user)
+  return `Bearer ${token}`
 }
 
 module.exports = {
